@@ -58,10 +58,11 @@ Ty widzisz tylko stronę HTML w przeglądarce.
 - **ffmpeg + ffprobe** są pobierane automatycznie (pakiet `static-ffmpeg`)
   przy pierwszym uruchomieniu — potrzebne do łączenia audio/wideo i
   osadzania miniaturki w pliku mp4.
-- YouTube od niedawna wymaga środowiska JavaScript (np. **Deno**) do pełnej
-  listy formatów. Bez niego pobieranie nadal działa, ale część rozdzielczości
-  może być niedostępna (w logu pojawia się ostrzeżenie „No supported
-  JavaScript runtime”). Wystarczy zainstalować Deno i dodać go do PATH.
+- YouTube wymaga środowiska JavaScript (**Deno**) do rozwiązywania podpisów —
+  bez niego dostępny jest tylko format 360p. Aplikacja **pobiera Deno
+  automatycznie** przy pierwszym uruchomieniu (~40 MB, do folderu
+  `~/.yt_downloader_tools`) i sam silnik EJS z GitHuba. Wymaga to dostępu
+  do internetu przy pierwszym pobraniu.
 
 ## Vimeo, Facebook i inne serwisy
 
@@ -71,13 +72,13 @@ publicznych filmów `vimeo.com/<numer>` wymaga zalogowania — ustaw wtedy
 na Vimeo. Dla filmów z możliwością osadzania aplikacja sama próbuje adresu
 `player.vimeo.com/...`, który zwykle działa bez logowania.
 
-## „This video is not available” / stary film
+## „This video is not available” / niska jakość / stary film
 
-- **Brak środowiska JavaScript (Deno).** Bez niego część starszych filmów
-  YouTube zwraca „This video is not available”. Aplikacja próbuje wtedy
-  alternatywnych klientów (android/ios/tv) — to ratuje większość
-  przypadków, choć w niższej rozdzielczości. Pełne rozwiązanie:
-  zainstaluj [Deno](https://deno.com/) i dodaj do PATH.
+- **Deno nie zostało pobrane** (brak internetu przy pierwszym uruchomieniu,
+  firewall, proxy). Wtedy YouTube oddaje tylko 360p, a część starszych
+  filmów zwraca „This video is not available”. Rozwiązanie: uruchom ponownie
+  z dostępem do internetu, albo zainstaluj [Deno](https://deno.com/) ręcznie
+  i dodaj do PATH. W logu przy starcie widać, czy Deno jest gotowe.
 - **Film wymaga logowania / ograniczenie wiekowe lub regionalne** — ustaw
   „Ciasteczka z przeglądarki”.
 - **Film usunięty / prywatny** — nie da się nic zrobić.

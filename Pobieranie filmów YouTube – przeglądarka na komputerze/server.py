@@ -9,14 +9,17 @@ pobierania filmów. Przy starcie automatycznie otwiera przeglądarkę.
 import glob
 import json
 import os
+import platform
 import re
 import shutil
 import subprocess
 import sys
 import threading
 import time
+import urllib.request
 import uuid
 import webbrowser
+import zipfile
 
 from flask import Flask, jsonify, request, send_from_directory
 
@@ -39,11 +42,81 @@ YT_PLAYER_CLIENTS = ["default", "android", "ios", "tv", "web_safari"]
 
 _VIMEO_ID_RE = re.compile(r"^https?://(?:www\.)?vimeo\.com/(\d+)(?:[/?#]|$)")
 
+TOOLS_DIR = os.path.join(os.path.expanduser("~"), ".yt_downloader_tools")
+
+# Od 2025 r. YouTube wymaga rozwiazywania podpisow w JavaScript. yt-dlp robi
+# to przez zewnetrzny silnik (EJS) uruchamiany w Deno. Bez tego dostepny jest
+# tylko format 18 (360p). Binarke Deno pobieramy raz, przy pierwszym uruchomieniu.
+DENO_ASSETS = {
+    ("Windows", "AMD64"): "deno-x86_64-pc-windows-msvc.zip",
+    ("Windows", "ARM64"): "deno-aarch64-pc-windows-msvc.zip",
+    ("Darwin", "arm64"): "deno-aarch64-apple-darwin.zip",
+    ("Darwin", "x86_64"): "deno-x86_64-apple-darwin.zip",
+    ("Linux", "x86_64"): "deno-x86_64-unknown-linux-gnu.zip",
+    ("Linux", "aarch64"): "deno-aarch64-unknown-linux-gnu.zip",
+}
+
 _ffmpeg_cache = {}
+_deno_cache = {}
+
+
+def _add_to_path(directory):
+    if directory and directory not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = directory + os.pathsep + os.environ.get("PATH", "")
+
+
+def ensure_deno():
+    """Zwraca sciezke do 'deno' albo None. Pobiera binarke przy pierwszym uzyciu."""
+    if "path" in _deno_cache:
+        return _deno_cache["path"]
+
+    found = shutil.which("deno")
+    if found:
+        _deno_cache["path"] = found
+        return found
+
+    exe = "deno.exe" if os.name == "nt" else "deno"
+    dest_dir = os.path.join(TOOLS_DIR, "deno")
+    dest = os.path.join(dest_dir, exe)
+    if os.path.exists(dest):
+        _add_to_path(dest_dir)
+        _deno_cache["path"] = dest
+        return dest
+
+    asset = DENO_ASSETS.get((platform.system(), platform.machine()))
+    if not asset:
+        _deno_cache["path"] = None
+        return None
+
+    url = f"https://github.com/denoland/deno/releases/latest/download/{asset}"
+    try:
+        os.makedirs(dest_dir, exist_ok=True)
+        tmp = dest + ".zip"
+        urllib.request.urlretrieve(url, tmp)
+        with zipfile.ZipFile(tmp) as archive:
+            archive.extractall(dest_dir)
+        os.remove(tmp)
+        if os.name != "nt":
+            os.chmod(dest, 0o755)
+        _add_to_path(dest_dir)
+        _deno_cache["path"] = dest
+        return dest
+    except Exception:
+        _deno_cache["path"] = None
+        return None
 
 
 def base_extractor_args():
     return {"youtube": {"player_client": list(YT_PLAYER_CLIENTS)}}
+
+
+def apply_youtube_runtime(ydl_opts):
+    """Wlacza silnik JS (Deno + EJS), jesli dostepny - inaczej YouTube oddaje
+    tylko 360p. Zwraca True, gdy silnik jest gotowy."""
+    if ensure_deno():
+        ydl_opts["remote_components"] = ["ejs:github"]
+        return True
+    return False
 
 
 def vimeo_embed_fallback(url, exc):
@@ -244,6 +317,9 @@ def _run_download(job_id, urls, settings):
         "fragment_retries": 10,
         "extractor_args": base_extractor_args(),
     }
+    if not apply_youtube_runtime(ydl_opts):
+        _job_log(job_id, "Uwaga: brak środowiska Deno — YouTube może oddać "
+                         "tylko 360p. Uruchom ponownie z dostępem do internetu.")
 
     is_audio = format_selector == "audio"
     if is_audio:
@@ -383,6 +459,7 @@ def _probe_url(url):
         "socket_timeout": 20,
         "extractor_args": base_extractor_args(),
     }
+    apply_youtube_runtime(opts)
     if ffmpeg_location:
         opts["ffmpeg_location"] = ffmpeg_location
 
@@ -523,6 +600,14 @@ def main():
     if yt_dlp is None:
         print("UWAGA: biblioteka yt-dlp nie jest zainstalowana. "
               "Uruchom run_web_windows.bat / run_web_mac_linux.sh albo: pip install -r requirements.txt")
+
+    print("Sprawdzam srodowisko JavaScript (Deno) dla YouTube "
+          "(przy pierwszym uruchomieniu pobiera ~40 MB)...")
+    if ensure_deno():
+        print("OK: Deno gotowe - dostepna pelna jakosc (1080p+).")
+    else:
+        print("UWAGA: brak Deno - YouTube moze oddawac tylko 360p. "
+              "Sprawdz polaczenie z internetem i uruchom ponownie.")
 
     print("Sprawdzam ffmpeg/ffprobe (przy pierwszym uruchomieniu moze chwile pobierac)...")
     location, has_ffprobe = resolve_ffmpeg()

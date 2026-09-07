@@ -66,6 +66,9 @@ automatycznie przy pierwszym uruchomieniu.
 - **ffmpeg + ffprobe** pobierane są automatycznie (pakiet `static-ffmpeg`)
   przy pierwszym uruchomieniu — potrzebne do łączenia audio/wideo i
   osadzania miniaturki w pliku mp4.
+- **Deno** (środowisko JavaScript) pobierane jest automatycznie przy
+  pierwszym pobraniu z YouTube (~40 MB, do folderu `~/.yt_downloader_tools`).
+  Bez niego YouTube oddaje tylko 360p.
 
 ## Film prywatny / niepubliczny
 
@@ -87,12 +90,11 @@ w której jesteś zalogowany na Vimeo. Filmy z możliwością osadzania
 
 Najczęstsze przyczyny i co robić:
 
-- **Brak środowiska JavaScript (Deno).** Nowe wersje yt-dlp do pełnej obsługi
-  YouTube potrzebują runtime JS. Bez niego część starszych filmów zwraca
-  „This video is not available” albo „The page needs to be reloaded”.
-  Aplikacja próbuje wtedy alternatywnych klientów (android/ios/tv), co
-  ratuje większość przypadków — ale w niższej rozdzielczości. Pełne
-  rozwiązanie: zainstaluj [Deno](https://deno.com/) i dodaj do PATH.
+- **Deno nie zostało pobrane** (brak internetu przy pierwszym pobraniu,
+  firewall, proxy). Wtedy YouTube oddaje tylko 360p, a część starszych
+  filmów zwraca „This video is not available”. Rozwiązanie: spróbuj ponownie
+  z dostępem do internetu, albo zainstaluj [Deno](https://deno.com/) ręcznie
+  i dodaj do PATH (w logu widać, czy Deno jest gotowe).
 - **Film wymaga logowania / jest ograniczony wiekowo lub regionalnie** —
   ustaw „Ciasteczka z przeglądarki”.
 - **Film został usunięty / jest prywatny** — wtedy nie da się nic zrobić.

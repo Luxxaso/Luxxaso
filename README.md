@@ -21,8 +21,10 @@ Ci odpowiada — każdy folder ma własny `README.md` z instrukcją.
 - **Python 3.8 lub nowszy** — https://www.python.org/downloads/ (na Windows
   podczas instalacji zaznacz **„Add python.exe to PATH”**).
 
-Pozostałe zależności (yt-dlp, ffmpeg + ffprobe) instalują się automatycznie
-przy pierwszym uruchomieniu skryptu startowego.
+Pozostałe zależności (yt-dlp, ffmpeg + ffprobe, a także Deno — środowisko
+JavaScript potrzebne YouTube do jakości powyżej 360p) pobierają się
+automatycznie przy pierwszym uruchomieniu. Potrzebny jest wtedy dostęp
+do internetu.
 
 ## Szybki start
 
