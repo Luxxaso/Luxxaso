@@ -1,0 +1,589 @@
+<title>Pobieracz Filmów</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: dark;
+  --wood-dark: #1b130a;
+  --wood: #3a2c18;
+  --wood-light: #55442a;
+  --panel: #4a3820;
+  --input-bg: #241a10;
+  --border: #6b5636;
+  --border-dark: #140d05;
+  --gold: #ffd700;
+  --gold-dim: #c9a227;
+  --tan: #e8d5a8;
+  --tan-dim: #b8a172;
+  --green: #3fd15c;
+  --red: #ff5252;
+  --yellow: #ffd23f;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.12) 0 2px, transparent 2px 6px),
+    radial-gradient(ellipse at top, #2a2013 0%, var(--wood-dark) 70%);
+  color: var(--tan);
+  font-family: 'VT323', 'Courier New', monospace;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 16px 60px;
+}
+
+.demo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  padding: 7px 16px;
+  background: var(--input-bg);
+  border: 2px solid var(--gold-dim);
+  border-radius: 3px;
+  color: var(--gold);
+  font-size: 15px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.15);
+}
+.demo-badge .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo-badge .dot { animation: none; }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.container {
+  width: 100%;
+  max-width: 680px;
+  background: linear-gradient(180deg, var(--panel), var(--wood));
+  border: 4px solid var(--border-dark);
+  border-radius: 6px;
+  box-shadow:
+    inset 0 0 0 3px var(--gold-dim),
+    inset 0 0 0 6px var(--border-dark),
+    inset 0 2px 12px rgba(0,0,0,0.5),
+    0 10px 30px rgba(0,0,0,0.7);
+  padding: 26px 28px;
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 4px 0 2px;
+}
+
+.rune {
+  color: var(--gold-dim);
+  font-size: 20px;
+  opacity: 0.8;
+}
+
+h1 {
+  margin: 0;
+  font-family: 'Press Start 2P', monospace;
+  font-weight: 400;
+  font-size: 19px;
+  line-height: 1.5;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--gold);
+  text-shadow: 2px 2px 0 #000, 0 0 10px rgba(255, 215, 0, 0.35);
+}
+
+.subtitle {
+  margin: 8px 0 20px;
+  color: var(--tan-dim);
+  text-align: center;
+  font-size: 18px;
+}
+
+label {
+  display: block;
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--tan);
+  margin: 16px 0 4px;
+}
+
+textarea, input[type="text"], select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 3px;
+  border: 2px solid var(--border);
+  background: var(--input-bg);
+  color: var(--tan);
+  font-size: 18px;
+  font-family: 'VT323', monospace;
+  resize: vertical;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.6);
+  accent-color: var(--gold);
+}
+
+textarea:focus, input[type="text"]:focus, select:focus {
+  outline: none;
+  border-color: var(--gold-dim);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.6), 0 0 6px rgba(255, 215, 0, 0.5);
+}
+
+textarea::placeholder, input[type="text"]::placeholder { color: #7a6a4d; }
+
+select option { background: var(--input-bg); color: var(--tan); }
+
+.row { display: flex; gap: 16px; }
+.field { flex: 1; }
+
+.options-row { margin-top: 10px; flex-wrap: wrap; row-gap: 10px; }
+.checkbox-field { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; }
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--tan);
+  white-space: normal;
+  cursor: pointer;
+}
+.checkbox-label input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--gold);
+}
+.checkbox-field input[type="text"] { width: 110px; flex-shrink: 0; padding: 6px 8px; }
+.checkbox-field input[type="text"]:disabled { opacity: 0.4; }
+
+.folder-row { display: flex; gap: 8px; }
+.folder-row input { flex: 1; }
+
+button {
+  font-family: 'VT323', monospace;
+  cursor: pointer;
+}
+
+.folder-row button,
+button#download_btn,
+button#retry_btn {
+  border-radius: 4px;
+  border: 2px solid var(--border-dark);
+  background: linear-gradient(180deg, var(--wood-light), var(--wood));
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.35),
+    0 0 0 1px var(--gold-dim);
+  transition: filter 0.15s ease, transform 0.05s ease;
+}
+
+.folder-row button {
+  padding: 0 14px;
+  font-size: 16px;
+}
+.folder-row button:hover { filter: brightness(1.25); }
+.folder-row button:active { transform: translateY(1px); }
+
+.button-row { display: flex; gap: 10px; margin-top: 20px; }
+.button-row button#download_btn { flex: 2; }
+.button-row button#retry_btn { flex: 1; }
+
+button#download_btn, button#retry_btn {
+  padding: 12px;
+  font-size: 20px;
+  font-weight: 400;
+}
+button#download_btn:hover, button#retry_btn:hover:not(:disabled) { filter: brightness(1.25); }
+button#download_btn:active, button#retry_btn:active:not(:disabled) { transform: translateY(1px); }
+button#download_btn:disabled, button#retry_btn:disabled {
+  background: var(--wood-dark);
+  color: #6b5f4a;
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: not-allowed;
+  filter: none;
+}
+button:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.progress-wrap { margin-top: 20px; }
+.progress-bar {
+  width: 100%;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--input-bg);
+  border: 2px solid var(--border);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(180deg, #fff3b0, var(--gold-dim) 45%, #8a6d1f);
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+  transition: width 0.2s ease;
+}
+#progress_label {
+  display: block;
+  margin-top: 6px;
+  font-size: 17px;
+  color: var(--tan-dim);
+}
+
+.items-list {
+  background: var(--input-bg);
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  min-height: 44px;
+  max-height: 150px;
+  overflow-y: auto;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.6);
+}
+.items-empty {
+  padding: 12px;
+  text-align: center;
+  font-size: 17px;
+  color: var(--tan-dim);
+}
+.item-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  font-size: 17px;
+  border-bottom: 1px solid var(--wood);
+}
+.item-row:last-child { border-bottom: none; }
+.item-url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--tan-dim); }
+.item-status {
+  flex-shrink: 0;
+  font-family: 'VT323', monospace;
+  font-weight: 400;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.item-status.queued { color: var(--tan-dim); }
+.item-status.downloading { color: var(--yellow); text-shadow: 0 0 6px rgba(255, 210, 63, 0.5); }
+.item-status.done { color: var(--green); text-shadow: 0 0 6px rgba(63, 209, 92, 0.5); }
+.item-status.error { color: var(--red); text-shadow: 0 0 6px rgba(255, 82, 82, 0.5); }
+
+pre#log {
+  background: #100b06;
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  padding: 12px;
+  height: 150px;
+  overflow-y: auto;
+  font-family: 'VT323', 'Consolas', monospace;
+  font-size: 16px;
+  color: var(--tan-dim);
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.7);
+  margin: 0;
+}
+
+.note {
+  margin-top: 18px;
+  font-size: 16px;
+  color: var(--tan-dim);
+  text-align: center;
+}
+
+::-webkit-scrollbar { width: 11px; }
+::-webkit-scrollbar-track { background: var(--wood-dark); }
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--wood-light), var(--wood));
+  border: 1px solid var(--gold-dim);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { filter: brightness(1.2); }
+</style>
+
+<div class="demo-badge"><span class="dot"></span> Demo — pobieranie jest symulowane</div>
+
+<div class="container">
+  <div class="banner">
+    <span class="rune">ᛝ</span>
+    <h1>Pobieracz Filmów</h1>
+    <span class="rune">ᛝ</span>
+  </div>
+  <p class="subtitle">Wklej link, wybierz jakość i kliknij Pobierz.</p>
+
+  <label for="urls">Link(i) do filmu (jeden na linię, można wkleić kilka)</label>
+  <textarea id="urls" rows="4">https://www.youtube.com/watch?v=dQw4w9WgXcQ
+https://www.youtube.com/watch?v=jNQXAC9IVRw
+https://www.youtube.com/watch?v=9bZkp7q19f0</textarea>
+
+  <div class="row">
+    <div class="field">
+      <label for="quality">Jakość</label>
+      <select id="quality">
+        <option value="best">Najlepsza jakość (wideo + audio)</option>
+        <option value="1080p">1080p (mp4)</option>
+        <option value="720p">720p (mp4)</option>
+        <option value="480p">480p (mp4)</option>
+        <option value="audio">Tylko audio (mp3)</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="browser">Ciasteczka z przeglądarki</label>
+      <select id="browser">
+        <option value="none">(brak)</option>
+        <option value="chrome">chrome</option>
+        <option value="firefox">firefox</option>
+        <option value="edge">edge</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="row options-row">
+    <div class="field checkbox-field">
+      <label class="checkbox-label"><input type="checkbox" id="subtitles"> Pobierz napisy, języki:</label>
+      <input type="text" id="sub_langs" value="pl,en" disabled>
+    </div>
+    <div class="field checkbox-field">
+      <label class="checkbox-label"><input type="checkbox" id="embed_metadata" checked> Osadź metadane i miniaturkę</label>
+    </div>
+  </div>
+
+  <div class="row options-row">
+    <div class="field checkbox-field">
+      <label class="checkbox-label"><input type="checkbox" id="playlist"> Cała playlista, zakres (opcjonalnie):</label>
+      <input type="text" id="playlist_range" placeholder="np. 1-5" disabled>
+    </div>
+  </div>
+
+  <label for="output_dir">Folder zapisu</label>
+  <div class="folder-row">
+    <input type="text" id="output_dir" value="C:\Users\Ty\Downloads\Pobrane_filmy">
+    <button id="pick_folder_btn" type="button">Wybierz...</button>
+  </div>
+
+  <div class="button-row">
+    <button id="download_btn">Pobierz</button>
+    <button id="retry_btn" disabled>Ponów nieudane</button>
+  </div>
+
+  <div class="progress-wrap">
+    <div class="progress-bar"><div id="progress_fill" class="progress-fill"></div></div>
+    <span id="progress_label">Gotowy.</span>
+  </div>
+
+  <label>Status pobrań</label>
+  <div id="items_list" class="items-list"></div>
+
+  <label>Log</label>
+  <pre id="log"></pre>
+
+  <p class="note">
+    Jeśli film jest prywatny/niepubliczny, a masz do niego dostęp, wybierz w polu
+    „Ciasteczka z przeglądarki” przeglądarkę, w której jesteś zalogowany na koncie
+    z uprawnieniami do tego filmu.
+  </p>
+</div>
+
+<script>
+const urlsEl = document.getElementById("urls");
+const qualityEl = document.getElementById("quality");
+const outputDirEl = document.getElementById("output_dir");
+const pickFolderBtn = document.getElementById("pick_folder_btn");
+const subtitlesEl = document.getElementById("subtitles");
+const subLangsEl = document.getElementById("sub_langs");
+const playlistEl = document.getElementById("playlist");
+const playlistRangeEl = document.getElementById("playlist_range");
+const downloadBtn = document.getElementById("download_btn");
+const retryBtn = document.getElementById("retry_btn");
+const progressFill = document.getElementById("progress_fill");
+const progressLabel = document.getElementById("progress_label");
+const itemsListEl = document.getElementById("items_list");
+const logEl = document.getElementById("log");
+
+const TITLES = {
+  "dQw4w9WgXcQ": "Rick Astley - Never Gonna Give You Up",
+  "jNQXAC9IVRw": "Me at the zoo",
+  "9bZkp7q19f0": "PSY - GANGNAM STYLE",
+};
+const FOLDER_EXAMPLES = [
+  "C:\\Users\\Ty\\Downloads\\Pobrane_filmy",
+  "D:\\Filmy\\YouTube",
+  "/home/ty/Wideo/Pobrane_filmy",
+];
+let folderIdx = 0;
+
+let lastItems = [];
+let running = false;
+let firstRun = true;
+
+function videoIdFrom(url) {
+  const m = url.match(/[?&]v=([^&]+)/) || url.match(/youtu\.be\/([^?&]+)/);
+  return m ? m[1] : null;
+}
+function titleFor(url) {
+  const id = videoIdFrom(url);
+  return (id && TITLES[id]) || "Pobrany_film";
+}
+function extFor() {
+  return qualityEl.value === "audio" ? "mp3" : "mp4";
+}
+
+function appendLog(line) {
+  logEl.textContent += line + "\n";
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function statusLabel(status) {
+  return { queued: "Oczekuje", downloading: "Pobieranie...", done: "Gotowe", error: "Błąd" }[status] || status;
+}
+function renderItems(items) {
+  lastItems = items;
+  itemsListEl.innerHTML = "";
+  if (items.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "items-empty";
+    empty.textContent = "Brak pobrań w kolejce.";
+    itemsListEl.appendChild(empty);
+    return;
+  }
+  for (const item of items) {
+    const row = document.createElement("div");
+    row.className = "item-row";
+    const urlSpan = document.createElement("span");
+    urlSpan.className = "item-url";
+    urlSpan.textContent = item.url;
+    urlSpan.title = item.url;
+    const statusSpan = document.createElement("span");
+    statusSpan.className = "item-status " + item.status;
+    statusSpan.textContent = statusLabel(item.status);
+    row.appendChild(urlSpan);
+    row.appendChild(statusSpan);
+    itemsListEl.appendChild(row);
+  }
+}
+
+function beep(freq) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = freq || 880;
+    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+  } catch (err) {}
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function animateProgress(item, index, items) {
+  for (let p = 0; p <= 100; p += Math.round(8 + Math.random() * 10)) {
+    const percent = Math.min(p, 100);
+    progressFill.style.width = percent + "%";
+    progressLabel.textContent = `Pobieranie... ${percent.toFixed(1)}% ${titleFor(item.url)}.${extFor()}`;
+    await sleep(90);
+  }
+}
+
+subtitlesEl.addEventListener("change", () => { subLangsEl.disabled = !subtitlesEl.checked; });
+playlistEl.addEventListener("change", () => { playlistRangeEl.disabled = !playlistEl.checked; });
+
+pickFolderBtn.addEventListener("click", () => {
+  folderIdx = (folderIdx + 1) % FOLDER_EXAMPLES.length;
+  outputDirEl.value = FOLDER_EXAMPLES[folderIdx];
+  progressLabel.textContent = "Demo: w prawdziwej aplikacji otworzyłoby się natywne okno wyboru folderu.";
+});
+
+function setRunning(isRunning) {
+  running = isRunning;
+  downloadBtn.disabled = isRunning;
+  downloadBtn.textContent = isRunning ? "Pobieranie..." : "Pobierz";
+  if (isRunning) retryBtn.disabled = true;
+}
+
+async function runDownload(urls, forceErrorLast) {
+  setRunning(true);
+  logEl.textContent = "";
+  progressFill.style.width = "0%";
+  const items = urls.map((url) => ({ url, status: "queued" }));
+  renderItems(items);
+
+  for (let i = 0; i < urls.length; i++) {
+    items[i].status = "downloading";
+    renderItems(items);
+    appendLog(`Rozpoczynam: ${urls[i]}`);
+    await animateProgress(items[i], i, items);
+
+    const willFail = forceErrorLast && i === urls.length - 1;
+    if (willFail) {
+      items[i].status = "error";
+      appendLog(`Błąd przy pobieraniu ${urls[i]}: connection reset (symulacja demo)`);
+    } else {
+      appendLog(`Pobrano, przetwarzanie: ${titleFor(urls[i])}.${extFor()}`);
+      items[i].status = "done";
+    }
+    renderItems(items);
+  }
+
+  const hadError = items.some((it) => it.status === "error");
+  if (hadError) {
+    progressLabel.textContent = "Zakończono z błędami — sprawdź log.";
+    appendLog("Zakończono z błędami. Jeśli film jest prywatny/niepubliczny, wybierz przeglądarkę w polu 'Ciasteczka z przeglądarki'.");
+    beep(220);
+    retryBtn.disabled = false;
+  } else {
+    progressFill.style.width = "100%";
+    progressLabel.textContent = "Gotowe!";
+    appendLog("Gotowe! Pliki zapisane w: " + outputDirEl.value);
+    beep(880);
+  }
+  setRunning(false);
+}
+
+downloadBtn.addEventListener("click", () => {
+  const urls = urlsEl.value.split("\n").map((u) => u.trim()).filter(Boolean);
+  if (urls.length === 0) {
+    progressLabel.textContent = "Wklej przynajmniej jeden link do filmu.";
+    return;
+  }
+  const forceErrorLast = firstRun && urls.length > 1;
+  firstRun = false;
+  runDownload(urls, forceErrorLast);
+});
+
+retryBtn.addEventListener("click", () => {
+  const failed = lastItems.filter((i) => i.status === "error").map((i) => i.url);
+  if (failed.length) runDownload(failed, false);
+});
+
+renderItems([]);
+</script>
