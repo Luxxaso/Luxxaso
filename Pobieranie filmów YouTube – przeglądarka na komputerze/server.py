@@ -9,6 +9,7 @@ pobierania filmów. Przy starcie automatycznie otwiera przeglądarkę.
 import glob
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -30,7 +31,28 @@ except ImportError:
     imageio_ffmpeg = None
 
 
+# Bez srodowiska JavaScript (Deno) domyslny klient "web" YouTube bywa
+# zepsuty ("This video is not available"). yt-dlp pobiera formaty ze
+# wszystkich wymienionych klientow i laczy wyniki, wiec dodanie
+# android/ios/tv ratuje stare/problematyczne filmy, nie psujac zwyklych.
+YT_PLAYER_CLIENTS = ["default", "android", "ios", "tv", "web_safari"]
+
+_VIMEO_ID_RE = re.compile(r"^https?://(?:www\.)?vimeo\.com/(\d+)(?:[/?#]|$)")
+
 _ffmpeg_cache = {}
+
+
+def base_extractor_args():
+    return {"youtube": {"player_client": list(YT_PLAYER_CLIENTS)}}
+
+
+def vimeo_embed_fallback(url, exc):
+    """Dla publicznych, osadzalnych filmow Vimeo, ktore od niedawna wymagaja
+    logowania na vimeo.com, sprobuj adresu player.vimeo.com."""
+    match = _VIMEO_ID_RE.match(url or "")
+    if match and "logged-in" in str(exc).lower():
+        return f"https://player.vimeo.com/video/{match.group(1)}"
+    return None
 
 
 def resolve_ffmpeg():
@@ -220,6 +242,7 @@ def _run_download(job_id, urls, settings):
         "socket_timeout": 30,
         "retries": 10,
         "fragment_retries": 10,
+        "extractor_args": base_extractor_args(),
     }
 
     is_audio = format_selector == "audio"
@@ -283,6 +306,15 @@ def _run_download(job_id, urls, settings):
                     ydl.download([url])
                     _set_item_status(job_id, i, "done")
                 except Exception as exc:
+                    alt = vimeo_embed_fallback(url, exc)
+                    if alt:
+                        try:
+                            _job_log(job_id, f"Vimeo wymaga logowania — próbuję: {alt}")
+                            ydl.download([alt])
+                            _set_item_status(job_id, i, "done")
+                            continue
+                        except Exception as exc2:
+                            exc = exc2
                     had_error = True
                     _set_item_status(job_id, i, "error")
                     _job_log(job_id, f"Błąd przy pobieraniu {url}: {exc}")
@@ -349,12 +381,23 @@ def _probe_url(url):
         "skip_download": True,
         "noplaylist": True,
         "socket_timeout": 20,
+        "extractor_args": base_extractor_args(),
     }
     if ffmpeg_location:
         opts["ffmpeg_location"] = ffmpeg_location
 
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(url, download=False)
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+    except Exception as exc:
+        alt = vimeo_embed_fallback(url, exc)
+        if not alt:
+            raise
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(alt, download=False)
+        except Exception:
+            raise exc
 
     if info.get("_type") == "playlist":
         entries = [e for e in (info.get("entries") or []) if e]
@@ -400,8 +443,21 @@ def probe():
         try:
             results.append(_probe_url(url))
         except Exception as exc:
-            results.append({"url": url, "error": str(exc)})
+            results.append({"url": url, "error": _friendly_error(exc)})
     return jsonify({"results": results})
+
+
+def _friendly_error(exc):
+    msg = str(exc)
+    low = msg.lower()
+    if "this video is not available" in low or "page needs to be reloaded" in low:
+        return (msg + "  —  Wskazówka: to zwykle brak środowiska JavaScript. "
+                "Zainstaluj Deno (deno.com) i dodaj do PATH, albo wybierz "
+                "przeglądarkę w polu „Ciasteczka z przeglądarki”.")
+    if "logged-in" in low or "cookies" in low or "sign in" in low:
+        return (msg + "  —  Wskazówka: ustaw pole „Ciasteczka z przeglądarki” "
+                "na przeglądarkę, w której jesteś zalogowany na tym serwisie.")
+    return msg
 
 
 @app.route("/api/download", methods=["POST"])

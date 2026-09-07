@@ -63,6 +63,25 @@ Ty widzisz tylko stronę HTML w przeglądarce.
   może być niedostępna (w logu pojawia się ostrzeżenie „No supported
   JavaScript runtime”). Wystarczy zainstalować Deno i dodać go do PATH.
 
+## Vimeo, Facebook i inne serwisy
+
+Link wklejasz tak samo jak z YouTube. Vimeo: od pewnego czasu wiele
+publicznych filmów `vimeo.com/<numer>` wymaga zalogowania — ustaw wtedy
+**„Ciasteczka z przeglądarki”** na przeglądarkę, w której jesteś zalogowany
+na Vimeo. Dla filmów z możliwością osadzania aplikacja sama próbuje adresu
+`player.vimeo.com/...`, który zwykle działa bez logowania.
+
+## „This video is not available” / stary film
+
+- **Brak środowiska JavaScript (Deno).** Bez niego część starszych filmów
+  YouTube zwraca „This video is not available”. Aplikacja próbuje wtedy
+  alternatywnych klientów (android/ios/tv) — to ratuje większość
+  przypadków, choć w niższej rozdzielczości. Pełne rozwiązanie:
+  zainstaluj [Deno](https://deno.com/) i dodaj do PATH.
+- **Film wymaga logowania / ograniczenie wiekowe lub regionalne** — ustaw
+  „Ciasteczka z przeglądarki”.
+- **Film usunięty / prywatny** — nie da się nic zrobić.
+
 ## Zatrzymanie
 
 Zamknij okno terminala (lub naciśnij Ctrl+C w nim), żeby wyłączyć serwer.

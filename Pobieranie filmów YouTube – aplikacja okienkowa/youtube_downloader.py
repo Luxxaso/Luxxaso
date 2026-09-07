@@ -9,6 +9,7 @@ konfiguracji PATH).
 
 import json
 import os
+import re
 import shutil
 import sys
 import threading
@@ -27,7 +28,24 @@ except ImportError:
     imageio_ffmpeg = None
 
 
+# Bez srodowiska JavaScript (Deno) domyslny klient YouTube bywa zepsuty na
+# starszych filmach. yt-dlp laczy formaty ze wszystkich klientow z listy.
+YT_PLAYER_CLIENTS = ["default", "android", "ios", "tv", "web_safari"]
+
+_VIMEO_ID_RE = re.compile(r"^https?://(?:www\.)?vimeo\.com/(\d+)(?:[/?#]|$)")
+
 _ffmpeg_cache = {}
+
+
+def base_extractor_args():
+    return {"youtube": {"player_client": list(YT_PLAYER_CLIENTS)}}
+
+
+def vimeo_embed_fallback(url, exc):
+    match = _VIMEO_ID_RE.match(url or "")
+    if match and "logged-in" in str(exc).lower():
+        return f"https://player.vimeo.com/video/{match.group(1)}"
+    return None
 
 
 def resolve_ffmpeg():
@@ -437,6 +455,7 @@ class DownloaderApp:
             "socket_timeout": 30,
             "retries": 10,
             "fragment_retries": 10,
+            "extractor_args": base_extractor_args(),
         }
 
         is_audio = format_selector == "audio"
@@ -493,6 +512,16 @@ class DownloaderApp:
                         ydl.download([url])
                         self.root.after(0, self._set_row_status, i, "Gotowe")
                     except Exception as exc:
+                        alt = vimeo_embed_fallback(url, exc)
+                        if alt:
+                            try:
+                                self.root.after(0, self._log,
+                                                f"Vimeo wymaga logowania — próbuję: {alt}")
+                                ydl.download([alt])
+                                self.root.after(0, self._set_row_status, i, "Gotowe")
+                                continue
+                            except Exception as exc2:
+                                exc = exc2
                         had_error = True
                         self.failed_urls.append(url)
                         self.root.after(0, self._set_row_status, i, "Błąd")
