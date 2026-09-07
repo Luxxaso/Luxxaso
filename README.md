@@ -1,8 +1,16 @@
 # Pobieracz filmów z YouTube
 
-Prosta aplikacja z okienkiem (GUI) do pobierania filmów z YouTube (i innych
-serwisów obsługiwanych przez [yt-dlp](https://github.com/yt-dlp/yt-dlp)) na
-dysk komputera. Nie trzeba używać terminala — wystarczy uruchomić jeden plik.
+Prosta aplikacja do pobierania filmów z YouTube (i innych serwisów
+obsługiwanych przez [yt-dlp](https://github.com/yt-dlp/yt-dlp)) na dysk
+komputera. Nie trzeba używać terminala — wystarczy uruchomić jeden plik.
+
+Dostępne są dwie wersje:
+
+- **Ten folder** — aplikacja z natywnym okienkiem (Tkinter).
+- **[`web-app/`](web-app/)** — wersja jako strona `index.html` otwierana w
+  przeglądarce (w tle działa mały lokalny serwer, który wykonuje pobieranie).
+
+Obie wersje mają te same funkcje — wybierz tę, która bardziej Ci odpowiada.
 
 ## Wymagania
 

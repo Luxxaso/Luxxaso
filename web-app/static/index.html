@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pobieracz filmów z YouTube</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Pobieracz filmów z YouTube</h1>
+    <p class="subtitle">Wklej link, wybierz jakość i kliknij Pobierz.</p>
+
+    <label for="urls">Link(i) do filmu (jeden na linię, można wkleić kilka)</label>
+    <textarea id="urls" rows="4" placeholder="https://www.youtube.com/watch?v=..."></textarea>
+
+    <div class="row">
+      <div class="field">
+        <label for="quality">Jakość</label>
+        <select id="quality">
+          <option value="best">Najlepsza jakość (wideo + audio)</option>
+          <option value="1080p">1080p (mp4)</option>
+          <option value="720p">720p (mp4)</option>
+          <option value="480p">480p (mp4)</option>
+          <option value="audio">Tylko audio (mp3)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="browser">Ciasteczka z przeglądarki</label>
+        <select id="browser">
+          <option value="none">(brak)</option>
+          <option value="chrome">chrome</option>
+          <option value="firefox">firefox</option>
+          <option value="edge">edge</option>
+          <option value="brave">brave</option>
+          <option value="opera">opera</option>
+          <option value="safari">safari</option>
+        </select>
+      </div>
+    </div>
+
+    <label for="output_dir">Folder zapisu</label>
+    <input type="text" id="output_dir" placeholder="Ładowanie domyślnej ścieżki...">
+
+    <button id="download_btn">Pobierz</button>
+
+    <div class="progress-wrap">
+      <div class="progress-bar"><div id="progress_fill" class="progress-fill"></div></div>
+      <span id="progress_label">Gotowy.</span>
+    </div>
+
+    <label>Log</label>
+    <pre id="log"></pre>
+
+    <p class="note">
+      Jeśli film jest prywatny/niepubliczny, a masz do niego dostęp, wybierz w polu
+      „Ciasteczka z przeglądarki” przeglądarkę, w której jesteś zalogowany na koncie
+      z uprawnieniami do tego filmu.
+    </p>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
