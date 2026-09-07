@@ -39,15 +39,41 @@
       </div>
     </div>
 
-    <label for="output_dir">Folder zapisu</label>
-    <input type="text" id="output_dir" placeholder="Ładowanie domyślnej ścieżki...">
+    <div class="row options-row">
+      <div class="field checkbox-field">
+        <label class="checkbox-label"><input type="checkbox" id="subtitles"> Pobierz napisy, języki:</label>
+        <input type="text" id="sub_langs" value="pl,en" disabled>
+      </div>
+      <div class="field checkbox-field">
+        <label class="checkbox-label"><input type="checkbox" id="embed_metadata" checked> Osadź metadane i miniaturkę</label>
+      </div>
+    </div>
 
-    <button id="download_btn">Pobierz</button>
+    <div class="row options-row">
+      <div class="field checkbox-field">
+        <label class="checkbox-label"><input type="checkbox" id="playlist"> Cała playlista, zakres (opcjonalnie):</label>
+        <input type="text" id="playlist_range" placeholder="np. 1-5" disabled>
+      </div>
+    </div>
+
+    <label for="output_dir">Folder zapisu</label>
+    <div class="folder-row">
+      <input type="text" id="output_dir" placeholder="Ładowanie domyślnej ścieżki...">
+      <button id="pick_folder_btn" type="button">Wybierz...</button>
+    </div>
+
+    <div class="button-row">
+      <button id="download_btn">Pobierz</button>
+      <button id="retry_btn" disabled>Ponów nieudane</button>
+    </div>
 
     <div class="progress-wrap">
       <div class="progress-bar"><div id="progress_fill" class="progress-fill"></div></div>
       <span id="progress_label">Gotowy.</span>
     </div>
+
+    <label>Status pobrań</label>
+    <div id="items_list" class="items-list"></div>
 
     <label>Log</label>
     <pre id="log"></pre>

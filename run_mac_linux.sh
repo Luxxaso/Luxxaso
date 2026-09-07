@@ -18,6 +18,7 @@ source .venv/bin/activate
 echo "Instaluje/aktualizuje zaleznosci..."
 pip install --upgrade pip >/dev/null
 pip install -r requirements.txt
+pip install --upgrade yt-dlp
 
 echo "Uruchamiam aplikacje..."
 python youtube_downloader.py

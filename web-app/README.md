@@ -32,8 +32,26 @@ Ty widzisz tylko stronę HTML w przeglądarce.
 1. Wklej link (lub kilka, po jednym w linii).
 2. Wybierz jakość i (opcjonalnie) przeglądarkę z ciasteczkami dla filmów
    prywatnych/niepublicznych.
-3. Sprawdź/zmień folder zapisu.
-4. Kliknij **Pobierz** — postęp i log widać na bieżąco na stronie.
+3. Kliknij **„Wybierz...”** przy folderze zapisu, żeby otworzyć prawdziwe
+   okno wyboru folderu systemu (zamiast wpisywać ścieżkę ręcznie).
+4. Kliknij **Pobierz** — postęp, status każdego linku i log widać na
+   bieżąco na stronie. Po zakończeniu strona wyśle powiadomienie
+   przeglądarki (jeśli zezwolisz) i zagra krótki dźwięk.
+
+## Dodatkowe opcje
+
+- **Napisy** — zaznacz „Pobierz napisy” i podaj języki (np. `pl,en`).
+- **Metadane i miniaturka** — domyślnie włączone; osadza tytuł, autora i
+  okładkę bezpośrednio w pobranym pliku.
+- **Playlisty** — domyślnie pobierany jest tylko pojedynczy film. Zaznacz
+  „Cała playlista”, żeby pobrać wszystkie filmy z playlisty; opcjonalny
+  zakres, np. `1-5`.
+- **Ponów nieudane** — jeśli któryś link się nie pobierze, przycisk
+  pozwoli ponowić tylko te, które zawiodły.
+- Strona **zapamiętuje** ostatnio używane ustawienia między uruchomieniami
+  serwera.
+- Skrypt startowy przy każdym uruchomieniu **aktualizuje yt-dlp** do
+  najnowszej wersji.
 
 ## Zatrzymanie
 

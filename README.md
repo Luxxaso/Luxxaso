@@ -47,7 +47,26 @@ przy pierwszym uruchomieniu.
 1. Wklej link (lub kilka linków, każdy w nowej linii) do pola u góry.
 2. Wybierz jakość z listy (np. "Najlepsza jakość", "1080p", albo "Tylko audio (mp3)").
 3. Wybierz folder zapisu (domyślnie `Pobrane/Pobrane_filmy`).
-4. Kliknij **Pobierz** i poczekaj — postęp widać na pasku i w logu.
+4. Kliknij **Pobierz** i poczekaj — postęp widać na pasku, status każdego
+   linku osobno w tabelce, a szczegóły w logu. Po zakończeniu usłyszysz
+   dźwięk i zobaczysz okienko z podsumowaniem.
+
+## Dodatkowe opcje
+
+- **Napisy** — zaznacz „Pobierz napisy” i podaj języki (np. `pl,en`).
+- **Metadane i miniaturka** — domyślnie włączone; osadza tytuł, autora i
+  okładkę (miniaturkę) bezpośrednio w pobranym pliku.
+- **Playlisty** — domyślnie pobierany jest tylko pojedynczy film. Zaznacz
+  „Cała playlista”, żeby pobrać wszystkie filmy z playlisty; w polu obok
+  możesz podać zakres, np. `1-5`.
+- **Ponów nieudane** — jeśli któryś link się nie pobierze (np. z powodu
+  chwilowego błędu sieci), przycisk pojawi się aktywny i pozwoli ponowić
+  tylko te linki, bez powtarzania całości.
+- Aplikacja **zapamiętuje** ostatnio używane ustawienia (jakość, folder,
+  przeglądarkę itd.) między uruchomieniami.
+- Przy każdym uruchomieniu skrypt startowy **aktualizuje yt-dlp** do
+  najnowszej wersji — YouTube często się zmienia i stara wersja przestaje
+  działać, więc to ważne dla niezawodności.
 
 ## Film prywatny / niepubliczny
 

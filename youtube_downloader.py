@@ -7,6 +7,7 @@ bibliotek yt-dlp oraz imageio-ffmpeg (własny ffmpeg, bez ręcznej
 konfiguracji PATH).
 """
 
+import json
 import os
 import sys
 import threading
@@ -35,20 +36,42 @@ QUALITY_OPTIONS = {
 BROWSER_OPTIONS = ["(brak)", "chrome", "firefox", "edge", "brave", "opera", "safari"]
 
 DEFAULT_OUTPUT_DIR = os.path.join(os.path.expanduser("~"), "Downloads", "Pobrane_filmy")
+CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".yt_downloader_config.json")
+
+
+def load_config():
+    try:
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_config(config):
+    try:
+        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(config, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
 
 
 class DownloaderApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Pobieracz filmów z YouTube")
-        self.root.geometry("720x560")
-        self.root.minsize(640, 480)
+        self.root.geometry("760x640")
+        self.root.minsize(680, 560)
 
         self.is_downloading = False
+        self.failed_urls = []
+        self.row_by_url_index = {}
+        self.config = load_config()
         self._build_ui()
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
     def _build_ui(self):
         pad = {"padx": 10, "pady": 6}
+        cfg = self.config
 
         # URL(s)
         url_frame = ttk.LabelFrame(self.root, text="Link(i) do filmu (jeden na linię, można wkleić kilka)")
@@ -61,7 +84,7 @@ class DownloaderApp:
         opts_frame.pack(fill="x", **pad)
 
         ttk.Label(opts_frame, text="Jakość:").grid(row=0, column=0, sticky="w")
-        self.quality_var = tk.StringVar(value=list(QUALITY_OPTIONS.keys())[0])
+        self.quality_var = tk.StringVar(value=cfg.get("quality", list(QUALITY_OPTIONS.keys())[0]))
         quality_combo = ttk.Combobox(
             opts_frame, textvariable=self.quality_var,
             values=list(QUALITY_OPTIONS.keys()), state="readonly", width=32
@@ -69,17 +92,44 @@ class DownloaderApp:
         quality_combo.grid(row=0, column=1, sticky="w", padx=(6, 20))
 
         ttk.Label(opts_frame, text="Ciasteczka z przeglądarki:").grid(row=0, column=2, sticky="w")
-        self.browser_var = tk.StringVar(value=BROWSER_OPTIONS[0])
+        self.browser_var = tk.StringVar(value=cfg.get("browser", BROWSER_OPTIONS[0]))
         browser_combo = ttk.Combobox(
             opts_frame, textvariable=self.browser_var,
             values=BROWSER_OPTIONS, state="readonly", width=12
         )
         browser_combo.grid(row=0, column=3, sticky="w", padx=(6, 0))
 
+        # Extra options
+        extra_frame = ttk.LabelFrame(self.root, text="Opcje dodatkowe")
+        extra_frame.pack(fill="x", **pad)
+
+        self.subtitles_var = tk.BooleanVar(value=cfg.get("subtitles", False))
+        ttk.Checkbutton(
+            extra_frame, text="Pobierz napisy, języki:", variable=self.subtitles_var,
+            command=self._update_extra_state
+        ).grid(row=0, column=0, sticky="w", padx=8, pady=6)
+        self.sub_langs_var = tk.StringVar(value=cfg.get("sub_langs", "pl,en"))
+        self.sub_langs_entry = ttk.Entry(extra_frame, textvariable=self.sub_langs_var, width=12)
+        self.sub_langs_entry.grid(row=0, column=1, sticky="w", padx=(0, 20))
+
+        self.embed_metadata_var = tk.BooleanVar(value=cfg.get("embed_metadata", True))
+        ttk.Checkbutton(
+            extra_frame, text="Osadź metadane i miniaturkę", variable=self.embed_metadata_var
+        ).grid(row=0, column=2, sticky="w", padx=8)
+
+        self.playlist_var = tk.BooleanVar(value=cfg.get("playlist", False))
+        ttk.Checkbutton(
+            extra_frame, text="Cała playlista, zakres (opcjonalnie):", variable=self.playlist_var,
+            command=self._update_extra_state
+        ).grid(row=1, column=0, sticky="w", padx=8, pady=6)
+        self.playlist_range_var = tk.StringVar(value=cfg.get("playlist_range", ""))
+        self.playlist_range_entry = ttk.Entry(extra_frame, textvariable=self.playlist_range_var, width=12)
+        self.playlist_range_entry.grid(row=1, column=1, sticky="w")
+
         # Output folder
         out_frame = ttk.LabelFrame(self.root, text="Folder zapisu")
         out_frame.pack(fill="x", **pad)
-        self.output_var = tk.StringVar(value=DEFAULT_OUTPUT_DIR)
+        self.output_var = tk.StringVar(value=cfg.get("output_dir", DEFAULT_OUTPUT_DIR))
         out_entry = ttk.Entry(out_frame, textvariable=self.output_var)
         out_entry.pack(side="left", fill="x", expand=True, padx=(8, 4), pady=8)
         ttk.Button(out_frame, text="Wybierz...", command=self._choose_folder).pack(side="left", padx=(0, 8), pady=8)
@@ -90,11 +140,24 @@ class DownloaderApp:
         self.download_btn = ttk.Button(action_frame, text="Pobierz", command=self._start_download)
         self.download_btn.pack(side="left")
 
+        self.retry_btn = ttk.Button(action_frame, text="Ponów nieudane", command=self._retry_failed, state="disabled")
+        self.retry_btn.pack(side="left", padx=(8, 0))
+
         self.progress = ttk.Progressbar(action_frame, mode="determinate", maximum=100)
         self.progress.pack(side="left", fill="x", expand=True, padx=10)
 
         self.status_var = tk.StringVar(value="Gotowy.")
         ttk.Label(self.root, textvariable=self.status_var).pack(fill="x", padx=10)
+
+        # Per-link status list
+        list_frame = ttk.LabelFrame(self.root, text="Status pobrań")
+        list_frame.pack(fill="both", padx=10, pady=6)
+        self.tree = ttk.Treeview(list_frame, columns=("status",), show="tree headings", height=5)
+        self.tree.heading("#0", text="Link")
+        self.tree.heading("status", text="Status")
+        self.tree.column("#0", width=520)
+        self.tree.column("status", width=140)
+        self.tree.pack(fill="x", padx=8, pady=8)
 
         # Log
         log_frame = ttk.LabelFrame(self.root, text="Log")
@@ -102,9 +165,15 @@ class DownloaderApp:
         self.log_text = tk.Text(log_frame, state="disabled", wrap="word")
         self.log_text.pack(fill="both", expand=True, padx=8, pady=8)
 
+        self._update_extra_state()
+
         if yt_dlp is None:
             self._log("BŁĄD: biblioteka yt-dlp nie jest zainstalowana. Uruchom instalator "
                        "(run_windows.bat / run_mac_linux.sh) lub wykonaj: pip install -r requirements.txt")
+
+    def _update_extra_state(self):
+        self.sub_langs_entry.configure(state="normal" if self.subtitles_var.get() else "disabled")
+        self.playlist_range_entry.configure(state="normal" if self.playlist_var.get() else "disabled")
 
     def _choose_folder(self):
         folder = filedialog.askdirectory(initialdir=self.output_var.get() or os.path.expanduser("~"))
@@ -117,7 +186,28 @@ class DownloaderApp:
         self.log_text.see("end")
         self.log_text.configure(state="disabled")
 
-    def _start_download(self):
+    def _current_settings(self):
+        return {
+            "quality": self.quality_var.get(),
+            "browser": self.browser_var.get(),
+            "output_dir": self.output_var.get().strip() or DEFAULT_OUTPUT_DIR,
+            "subtitles": self.subtitles_var.get(),
+            "sub_langs": self.sub_langs_var.get().strip() or "pl,en",
+            "embed_metadata": self.embed_metadata_var.get(),
+            "playlist": self.playlist_var.get(),
+            "playlist_range": self.playlist_range_var.get().strip(),
+        }
+
+    def _on_close(self):
+        save_config(self._current_settings())
+        self.root.destroy()
+
+    def _retry_failed(self):
+        if not self.failed_urls:
+            return
+        self._start_download(urls_override=list(self.failed_urls))
+
+    def _start_download(self, urls_override=None):
         if self.is_downloading:
             return
 
@@ -130,31 +220,49 @@ class DownloaderApp:
             )
             return
 
-        urls = [line.strip() for line in self.url_text.get("1.0", "end").splitlines() if line.strip()]
+        if urls_override is not None:
+            urls = urls_override
+        else:
+            urls = [line.strip() for line in self.url_text.get("1.0", "end").splitlines() if line.strip()]
         if not urls:
             messagebox.showwarning("Brak linku", "Wklej przynajmniej jeden link do filmu.")
             return
 
-        output_dir = self.output_var.get().strip() or DEFAULT_OUTPUT_DIR
+        settings = self._current_settings()
+        output_dir = settings["output_dir"]
         os.makedirs(output_dir, exist_ok=True)
+        save_config(settings)
 
         self.is_downloading = True
+        self.failed_urls = []
         self.download_btn.configure(state="disabled")
+        self.retry_btn.configure(state="disabled")
         self.progress["value"] = 0
         self.status_var.set("Pobieranie...")
 
-        thread = threading.Thread(target=self._download_worker, args=(urls, output_dir), daemon=True)
+        self.tree.delete(*self.tree.get_children())
+        self.row_by_url_index = {}
+        for i, url in enumerate(urls):
+            iid = f"row{i}"
+            display = url if len(url) <= 70 else url[:67] + "..."
+            self.tree.insert("", "end", iid=iid, text=display, values=("Oczekuje",))
+            self.row_by_url_index[i] = iid
+
+        thread = threading.Thread(target=self._download_worker, args=(urls, settings), daemon=True)
         thread.start()
 
-    def _download_worker(self, urls, output_dir):
-        quality_key = self.quality_var.get()
-        format_selector = QUALITY_OPTIONS[quality_key]
-        browser = self.browser_var.get()
+    def _set_row_status(self, index, status_text):
+        iid = self.row_by_url_index.get(index)
+        if iid is not None:
+            self.tree.set(iid, "status", status_text)
+
+    def _download_worker(self, urls, settings):
+        format_selector = QUALITY_OPTIONS[settings["quality"]]
+        browser = settings["browser"]
 
         ydl_opts = {
-            "outtmpl": os.path.join(output_dir, "%(title)s.%(ext)s"),
+            "outtmpl": os.path.join(settings["output_dir"], "%(title)s.%(ext)s"),
             "progress_hooks": [self._progress_hook],
-            "noplaylist": False,
             "ignoreerrors": True,
         }
 
@@ -169,6 +277,26 @@ class DownloaderApp:
             ydl_opts["format"] = format_selector
             ydl_opts["merge_output_format"] = "mp4"
 
+        if settings["subtitles"]:
+            langs = [lang.strip() for lang in settings["sub_langs"].split(",") if lang.strip()] or ["pl", "en"]
+            ydl_opts["writesubtitles"] = True
+            ydl_opts["writeautomaticsub"] = True
+            ydl_opts["subtitleslangs"] = langs
+            if format_selector != "audio":
+                ydl_opts["embedsubtitles"] = True
+
+        if settings["embed_metadata"]:
+            ydl_opts.setdefault("postprocessors", [])
+            ydl_opts["writethumbnail"] = True
+            ydl_opts["postprocessors"] += [{"key": "FFmpegMetadata"}, {"key": "EmbedThumbnail"}]
+
+        if settings["playlist"]:
+            ydl_opts["noplaylist"] = False
+            if settings["playlist_range"]:
+                ydl_opts["playlist_items"] = settings["playlist_range"]
+        else:
+            ydl_opts["noplaylist"] = True
+
         if imageio_ffmpeg is not None:
             try:
                 ydl_opts["ffmpeg_location"] = imageio_ffmpeg.get_ffmpeg_exe()
@@ -181,18 +309,22 @@ class DownloaderApp:
         had_error = False
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                for url in urls:
+                for i, url in enumerate(urls):
+                    self.root.after(0, self._set_row_status, i, "Pobieranie...")
                     self.root.after(0, self._log, f"Rozpoczynam: {url}")
                     try:
                         ydl.download([url])
+                        self.root.after(0, self._set_row_status, i, "Gotowe")
                     except Exception as exc:
                         had_error = True
+                        self.failed_urls.append(url)
+                        self.root.after(0, self._set_row_status, i, "Błąd")
                         self.root.after(0, self._log, f"Błąd przy pobieraniu {url}: {exc}")
         except Exception as exc:
             had_error = True
             self.root.after(0, self._log, f"Nieoczekiwany błąd: {exc}")
 
-        self.root.after(0, self._download_finished, had_error)
+        self.root.after(0, self._download_finished, had_error, settings["output_dir"])
 
     def _progress_hook(self, d):
         if d.get("status") == "downloading":
@@ -208,18 +340,22 @@ class DownloaderApp:
         self.progress["value"] = percent
         self.status_var.set(f"Pobieranie... {percent:.1f}%  {os.path.basename(filename)}")
 
-    def _download_finished(self, had_error):
+    def _download_finished(self, had_error, output_dir):
         self.is_downloading = False
         self.download_btn.configure(state="normal")
+        self.retry_btn.configure(state="normal" if self.failed_urls else "disabled")
         self.progress["value"] = 100 if not had_error else self.progress["value"]
+        self.root.bell()
         if had_error:
             self.status_var.set("Zakończono z błędami — sprawdź log.")
             self._log("Zakończono z błędami. Jeśli film jest prywatny/niepubliczny, "
                        "wybierz przeglądarkę w polu 'Ciasteczka z przeglądarki' (musisz być "
                        "zalogowany w tej przeglądarce na koncie z dostępem do filmu).")
+            messagebox.showwarning("Zakończono z błędami", "Część linków się nie pobrała — sprawdź log i spróbuj 'Ponów nieudane'.")
         else:
-            self.status_var.set("Gotowe! Pliki zapisane w: " + self.output_var.get())
+            self.status_var.set("Gotowe! Pliki zapisane w: " + output_dir)
             self._log("Gotowe.")
+            messagebox.showinfo("Gotowe", "Pobieranie zakończone.\nZapisano w: " + output_dir)
 
 
 def main():

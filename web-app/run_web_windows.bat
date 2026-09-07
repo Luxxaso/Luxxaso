@@ -21,6 +21,7 @@ call ".venv\Scripts\activate.bat"
 echo Instaluje/aktualizuje zaleznosci...
 python -m pip install --upgrade pip >nul
 pip install -r requirements.txt
+pip install --upgrade yt-dlp
 
 echo Uruchamiam serwer i otwieram przegladarke...
 python server.py
