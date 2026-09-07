@@ -52,9 +52,9 @@ RS_TAN_DIM = "#9c8964"
 RS_GREEN = "#3fd15c"
 RS_RED = "#ff5252"
 
-HEADER_FONT_CANDIDATES = ["Cinzel", "Trajan Pro", "Georgia", "Times New Roman"]
-BODY_FONT_CANDIDATES = ["EB Garamond", "Garamond", "Georgia", "Times New Roman"]
-LOG_FONT_CANDIDATES = ["Consolas", "Courier New"]
+HEADER_FONT_CANDIDATES = ["Press Start 2P", "Perfect DOS VGA 437", "Cascadia Mono", "Consolas", "Menlo", "Courier New"]
+BODY_FONT_CANDIDATES = ["VT323", "Perfect DOS VGA 437", "Cascadia Mono", "Consolas", "Menlo", "Courier New"]
+LOG_FONT_CANDIDATES = ["Perfect DOS VGA 437", "Consolas", "Menlo", "Courier New"]
 
 
 def pick_font(root, candidates, size, weight="normal"):
@@ -62,7 +62,7 @@ def pick_font(root, candidates, size, weight="normal"):
     for name in candidates:
         if name in available:
             return (name, size, weight)
-    return ("Georgia", size, weight)
+    return ("Courier New", size, weight)
 
 
 def load_config():
@@ -165,7 +165,7 @@ class DownloaderApp:
         pad = {"padx": 10, "pady": 6}
         cfg = self.config
 
-        header = ttk.Label(self.root, text="⚔  Pobieracz Filmów  ⚔", style="Header.TLabel")
+        header = ttk.Label(self.root, text="*** Pobieracz Filmów ***", style="Header.TLabel")
         header.pack(fill="x", padx=10, pady=(14, 2))
 
         # URL(s)

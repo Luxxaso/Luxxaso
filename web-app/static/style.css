@@ -25,7 +25,7 @@ body {
     repeating-linear-gradient(90deg, rgba(0,0,0,0.12) 0 2px, transparent 2px 6px),
     radial-gradient(ellipse at top, #2a2013 0%, var(--wood-dark) 70%);
   color: var(--tan);
-  font-family: 'EB Garamond', Georgia, serif;
+  font-family: 'VT323', 'Courier New', monospace;
   display: flex;
   justify-content: center;
   padding: 32px 16px;
@@ -61,33 +61,33 @@ body {
 
 h1 {
   margin: 0;
-  font-family: 'Cinzel', Georgia, serif;
-  font-weight: 700;
-  font-size: 26px;
+  font-family: 'Press Start 2P', monospace;
+  font-weight: 400;
+  font-size: 19px;
+  line-height: 1.5;
   text-align: center;
   text-transform: uppercase;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
   color: var(--gold);
   text-shadow: 2px 2px 0 #000, 0 0 10px rgba(255, 215, 0, 0.35);
 }
 
 .subtitle {
-  margin: 6px 0 20px;
+  margin: 8px 0 20px;
   color: var(--tan-dim);
-  font-style: italic;
   text-align: center;
-  font-size: 14px;
+  font-size: 18px;
 }
 
 label {
   display: block;
-  font-family: 'Cinzel', Georgia, serif;
-  font-size: 12px;
-  font-weight: 600;
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  font-weight: 400;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: var(--tan);
-  margin: 16px 0 6px;
+  margin: 16px 0 4px;
 }
 
 textarea, input[type="text"], select {
@@ -97,8 +97,8 @@ textarea, input[type="text"], select {
   border: 2px solid var(--border);
   background: var(--input-bg);
   color: var(--tan);
-  font-size: 14px;
-  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 18px;
+  font-family: 'VT323', monospace;
   resize: vertical;
   box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.6);
   accent-color: var(--gold);
@@ -117,36 +117,37 @@ select option { background: var(--input-bg); color: var(--tan); }
 .row { display: flex; gap: 16px; }
 .field { flex: 1; }
 
-.options-row { margin-top: 10px; }
-.checkbox-field { display: flex; align-items: center; gap: 8px; }
+.options-row { margin-top: 10px; flex-wrap: wrap; row-gap: 10px; }
+.checkbox-field { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; }
 .checkbox-label {
   display: flex;
   align-items: center;
   gap: 7px;
   margin: 0;
-  font-family: 'EB Garamond', Georgia, serif;
-  font-size: 14px;
-  font-weight: 600;
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  font-weight: 400;
   text-transform: none;
   letter-spacing: normal;
   color: var(--tan);
-  white-space: nowrap;
+  white-space: normal;
   cursor: pointer;
 }
 .checkbox-label input[type="checkbox"] {
+  flex-shrink: 0;
   width: 16px;
   height: 16px;
   cursor: pointer;
   accent-color: var(--gold);
 }
-.checkbox-field input[type="text"] { width: 90px; padding: 6px 8px; }
+.checkbox-field input[type="text"] { width: 110px; flex-shrink: 0; padding: 6px 8px; }
 .checkbox-field input[type="text"]:disabled { opacity: 0.4; }
 
 .folder-row { display: flex; gap: 8px; }
 .folder-row input { flex: 1; }
 
 button {
-  font-family: 'Cinzel', Georgia, serif;
+  font-family: 'VT323', monospace;
   cursor: pointer;
 }
 
@@ -168,7 +169,7 @@ button#retry_btn {
 
 .folder-row button {
   padding: 0 14px;
-  font-size: 12px;
+  font-size: 16px;
 }
 .folder-row button:hover { filter: brightness(1.25); }
 .folder-row button:active { transform: translateY(1px); }
@@ -179,8 +180,8 @@ button#retry_btn {
 
 button#download_btn, button#retry_btn {
   padding: 12px;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 400;
 }
 button#download_btn:hover, button#retry_btn:hover:not(:disabled) { filter: brightness(1.25); }
 button#download_btn:active, button#retry_btn:active:not(:disabled) { transform: translateY(1px); }
@@ -212,9 +213,8 @@ button#download_btn:disabled, button#retry_btn:disabled {
 #progress_label {
   display: block;
   margin-top: 6px;
-  font-size: 13px;
+  font-size: 17px;
   color: var(--tan-dim);
-  font-style: italic;
 }
 
 .items-list {
@@ -229,8 +229,7 @@ button#download_btn:disabled, button#retry_btn:disabled {
 .items-empty {
   padding: 12px;
   text-align: center;
-  font-style: italic;
-  font-size: 13px;
+  font-size: 17px;
   color: var(--tan-dim);
 }
 .item-row {
@@ -238,16 +237,16 @@ button#download_btn:disabled, button#retry_btn:disabled {
   justify-content: space-between;
   gap: 10px;
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: 17px;
   border-bottom: 1px solid var(--wood);
 }
 .item-row:last-child { border-bottom: none; }
 .item-url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--tan-dim); }
 .item-status {
   flex-shrink: 0;
-  font-family: 'Cinzel', Georgia, serif;
-  font-weight: 700;
-  font-size: 11px;
+  font-family: 'VT323', monospace;
+  font-weight: 400;
+  font-size: 15px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -263,8 +262,8 @@ pre#log {
   padding: 12px;
   height: 150px;
   overflow-y: auto;
-  font-family: 'Consolas', 'Courier New', monospace;
-  font-size: 12px;
+  font-family: 'VT323', 'Consolas', monospace;
+  font-size: 16px;
   color: var(--tan-dim);
   white-space: pre-wrap;
   word-break: break-word;
@@ -273,8 +272,7 @@ pre#log {
 
 .note {
   margin-top: 18px;
-  font-size: 12px;
-  font-style: italic;
+  font-size: 16px;
   color: var(--tan-dim);
   text-align: center;
 }
