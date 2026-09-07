@@ -33,6 +33,13 @@ function statusLabel(status) {
 function renderItems(items) {
   lastItems = items;
   itemsListEl.innerHTML = "";
+  if (items.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "items-empty";
+    empty.textContent = "Brak pobrań w kolejce.";
+    itemsListEl.appendChild(empty);
+    return;
+  }
   for (const item of items) {
     const row = document.createElement("div");
     row.className = "item-row";
@@ -235,4 +242,5 @@ if (window.Notification && Notification.permission === "default") {
   Notification.requestPermission();
 }
 
+renderItems([]);
 loadConfig();

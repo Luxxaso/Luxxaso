@@ -12,6 +12,7 @@ import os
 import sys
 import threading
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import filedialog, messagebox, ttk
 
 try:
@@ -38,6 +39,31 @@ BROWSER_OPTIONS = ["(brak)", "chrome", "firefox", "edge", "brave", "opera", "saf
 DEFAULT_OUTPUT_DIR = os.path.join(os.path.expanduser("~"), "Downloads", "Pobrane_filmy")
 CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".yt_downloader_config.json")
 
+# RuneScape-inspired palette: dark wood panels with gold trim.
+RS_BG = "#1b130a"
+RS_PANEL = "#3a2c18"
+RS_PANEL_LIGHT = "#55442a"
+RS_INPUT_BG = "#241a10"
+RS_BORDER = "#6b5636"
+RS_GOLD = "#ffd700"
+RS_GOLD_DIM = "#c9a227"
+RS_TAN = "#e8d5a8"
+RS_TAN_DIM = "#9c8964"
+RS_GREEN = "#3fd15c"
+RS_RED = "#ff5252"
+
+HEADER_FONT_CANDIDATES = ["Cinzel", "Trajan Pro", "Georgia", "Times New Roman"]
+BODY_FONT_CANDIDATES = ["EB Garamond", "Garamond", "Georgia", "Times New Roman"]
+LOG_FONT_CANDIDATES = ["Consolas", "Courier New"]
+
+
+def pick_font(root, candidates, size, weight="normal"):
+    available = set(tkfont.families(root))
+    for name in candidates:
+        if name in available:
+            return (name, size, weight)
+    return ("Georgia", size, weight)
+
 
 def load_config():
     try:
@@ -59,24 +85,97 @@ class DownloaderApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Pobieracz filmów z YouTube")
-        self.root.geometry("760x640")
-        self.root.minsize(680, 560)
+        self.root.geometry("780x700")
+        self.root.minsize(700, 620)
 
         self.is_downloading = False
         self.failed_urls = []
         self.row_by_url_index = {}
         self.config = load_config()
+        self._apply_theme()
         self._build_ui()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+
+    def _apply_theme(self):
+        self.font_title = pick_font(self.root, HEADER_FONT_CANDIDATES, 18, "bold")
+        self.font_header = pick_font(self.root, HEADER_FONT_CANDIDATES, 11, "bold")
+        self.font_body = pick_font(self.root, BODY_FONT_CANDIDATES, 10)
+        self.font_log = pick_font(self.root, LOG_FONT_CANDIDATES, 10)
+
+        self.root.configure(bg=RS_BG)
+
+        style = ttk.Style()
+        try:
+            style.theme_use("clam")
+        except Exception:
+            pass
+
+        style.configure(".", background=RS_BG, foreground=RS_TAN, font=self.font_body)
+        style.configure("TFrame", background=RS_BG)
+        style.configure("TLabel", background=RS_BG, foreground=RS_TAN, font=self.font_body)
+        style.configure("Header.TLabel", background=RS_BG, foreground=RS_GOLD, font=self.font_title, anchor="center")
+        style.configure(
+            "TLabelframe", background=RS_BG, bordercolor=RS_GOLD_DIM, darkcolor=RS_BG, lightcolor=RS_BG,
+            relief="ridge"
+        )
+        style.configure("TLabelframe.Label", background=RS_BG, foreground=RS_GOLD, font=self.font_header)
+        style.configure(
+            "TButton", background=RS_PANEL, foreground=RS_GOLD, bordercolor=RS_GOLD_DIM,
+            font=self.font_header, padding=6, relief="raised"
+        )
+        style.map(
+            "TButton",
+            background=[("active", RS_PANEL_LIGHT), ("disabled", RS_BG)],
+            foreground=[("disabled", RS_TAN_DIM)],
+        )
+        style.configure("TCheckbutton", background=RS_BG, foreground=RS_TAN, font=self.font_body)
+        style.map("TCheckbutton", background=[("active", RS_BG)], foreground=[("disabled", RS_TAN_DIM)])
+        style.configure(
+            "TCombobox", fieldbackground=RS_INPUT_BG, background=RS_PANEL, foreground=RS_TAN,
+            arrowcolor=RS_GOLD, bordercolor=RS_BORDER, selectbackground=RS_INPUT_BG,
+            selectforeground=RS_TAN, lightcolor=RS_INPUT_BG, darkcolor=RS_INPUT_BG
+        )
+        style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", RS_INPUT_BG), ("disabled", RS_BG)],
+            foreground=[("readonly", RS_TAN), ("disabled", RS_TAN_DIM)],
+            selectbackground=[("readonly", RS_INPUT_BG)],
+            selectforeground=[("readonly", RS_TAN)],
+            background=[("readonly", RS_PANEL), ("active", RS_PANEL_LIGHT)],
+        )
+        self.root.option_add("*TCombobox*Listbox.background", RS_INPUT_BG)
+        self.root.option_add("*TCombobox*Listbox.foreground", RS_TAN)
+        self.root.option_add("*TCombobox*Listbox.selectBackground", RS_PANEL_LIGHT)
+        self.root.option_add("*TCombobox*Listbox.selectForeground", RS_GOLD)
+        self.root.option_add("*TCombobox*Listbox.font", self.font_body)
+        style.configure("TEntry", fieldbackground=RS_INPUT_BG, foreground=RS_TAN, bordercolor=RS_BORDER)
+        style.map("TEntry", fieldbackground=[("disabled", RS_BG)])
+        style.configure(
+            "Horizontal.TProgressbar", troughcolor=RS_INPUT_BG, background=RS_GOLD_DIM,
+            bordercolor=RS_BORDER, lightcolor=RS_GOLD, darkcolor=RS_GOLD_DIM
+        )
+        style.configure(
+            "Treeview", background=RS_INPUT_BG, fieldbackground=RS_INPUT_BG, foreground=RS_TAN,
+            bordercolor=RS_BORDER, font=self.font_body, rowheight=24
+        )
+        style.configure("Treeview.Heading", background=RS_PANEL, foreground=RS_GOLD, font=self.font_header)
+        style.map("Treeview", background=[("selected", RS_PANEL_LIGHT)], foreground=[("selected", RS_GOLD)])
 
     def _build_ui(self):
         pad = {"padx": 10, "pady": 6}
         cfg = self.config
 
+        header = ttk.Label(self.root, text="⚔  Pobieracz Filmów  ⚔", style="Header.TLabel")
+        header.pack(fill="x", padx=10, pady=(14, 2))
+
         # URL(s)
         url_frame = ttk.LabelFrame(self.root, text="Link(i) do filmu (jeden na linię, można wkleić kilka)")
         url_frame.pack(fill="x", **pad)
-        self.url_text = tk.Text(url_frame, height=4, wrap="word")
+        self.url_text = tk.Text(
+            url_frame, height=4, wrap="word", bg=RS_INPUT_BG, fg=RS_TAN, insertbackground=RS_GOLD,
+            font=self.font_body, relief="flat", highlightthickness=1, highlightbackground=RS_BORDER,
+            highlightcolor=RS_GOLD_DIM
+        )
         self.url_text.pack(fill="x", padx=8, pady=8)
 
         # Options row
@@ -85,19 +184,19 @@ class DownloaderApp:
 
         ttk.Label(opts_frame, text="Jakość:").grid(row=0, column=0, sticky="w")
         self.quality_var = tk.StringVar(value=cfg.get("quality", list(QUALITY_OPTIONS.keys())[0]))
-        quality_combo = ttk.Combobox(
+        self.quality_combo = ttk.Combobox(
             opts_frame, textvariable=self.quality_var,
             values=list(QUALITY_OPTIONS.keys()), state="readonly", width=32
         )
-        quality_combo.grid(row=0, column=1, sticky="w", padx=(6, 20))
+        self.quality_combo.grid(row=0, column=1, sticky="w", padx=(6, 20))
 
         ttk.Label(opts_frame, text="Ciasteczka z przeglądarki:").grid(row=0, column=2, sticky="w")
         self.browser_var = tk.StringVar(value=cfg.get("browser", BROWSER_OPTIONS[0]))
-        browser_combo = ttk.Combobox(
+        self.browser_combo = ttk.Combobox(
             opts_frame, textvariable=self.browser_var,
             values=BROWSER_OPTIONS, state="readonly", width=12
         )
-        browser_combo.grid(row=0, column=3, sticky="w", padx=(6, 0))
+        self.browser_combo.grid(row=0, column=3, sticky="w", padx=(6, 0))
 
         # Extra options
         extra_frame = ttk.LabelFrame(self.root, text="Opcje dodatkowe")
@@ -157,19 +256,35 @@ class DownloaderApp:
         self.tree.heading("status", text="Status")
         self.tree.column("#0", width=520)
         self.tree.column("status", width=140)
+        self.tree.tag_configure("queued", foreground=RS_TAN_DIM)
+        self.tree.tag_configure("working", foreground=RS_GOLD)
+        self.tree.tag_configure("done", foreground=RS_GREEN)
+        self.tree.tag_configure("error", foreground=RS_RED)
         self.tree.pack(fill="x", padx=8, pady=8)
 
         # Log
         log_frame = ttk.LabelFrame(self.root, text="Log")
         log_frame.pack(fill="both", expand=True, **pad)
-        self.log_text = tk.Text(log_frame, state="disabled", wrap="word")
+        self.log_text = tk.Text(
+            log_frame, state="disabled", wrap="word", bg="#100b06", fg=RS_TAN_DIM,
+            insertbackground=RS_GOLD, font=self.font_log, relief="flat", highlightthickness=1,
+            highlightbackground=RS_BORDER, highlightcolor=RS_GOLD_DIM
+        )
         self.log_text.pack(fill="both", expand=True, padx=8, pady=8)
 
         self._update_extra_state()
+        self.root.after(60, self._refresh_combo_styles)
 
         if yt_dlp is None:
             self._log("BŁĄD: biblioteka yt-dlp nie jest zainstalowana. Uruchom instalator "
                        "(run_windows.bat / run_mac_linux.sh) lub wykonaj: pip install -r requirements.txt")
+
+    def _refresh_combo_styles(self):
+        # Tk's "clam" theme sometimes fails to paint the readonly Combobox
+        # field color on first draw; toggling the state forces a repaint.
+        for combo in (self.quality_combo, self.browser_combo):
+            combo.state(["!readonly"])
+            combo.state(["readonly"])
 
     def _update_extra_state(self):
         self.sub_langs_entry.configure(state="normal" if self.subtitles_var.get() else "disabled")
@@ -245,16 +360,24 @@ class DownloaderApp:
         for i, url in enumerate(urls):
             iid = f"row{i}"
             display = url if len(url) <= 70 else url[:67] + "..."
-            self.tree.insert("", "end", iid=iid, text=display, values=("Oczekuje",))
+            self.tree.insert("", "end", iid=iid, text=display, values=("Oczekuje",), tags=("queued",))
             self.row_by_url_index[i] = iid
 
         thread = threading.Thread(target=self._download_worker, args=(urls, settings), daemon=True)
         thread.start()
 
+    ROW_STATUS_TAGS = {
+        "Oczekuje": "queued",
+        "Pobieranie...": "working",
+        "Gotowe": "done",
+        "Błąd": "error",
+    }
+
     def _set_row_status(self, index, status_text):
         iid = self.row_by_url_index.get(index)
         if iid is not None:
             self.tree.set(iid, "status", status_text)
+            self.tree.item(iid, tags=(self.ROW_STATUS_TAGS.get(status_text, "queued"),))
 
     def _download_worker(self, urls, settings):
         format_selector = QUALITY_OPTIONS[settings["quality"]]
@@ -360,14 +483,6 @@ class DownloaderApp:
 
 def main():
     root = tk.Tk()
-    try:
-        style = ttk.Style()
-        if "vista" in style.theme_names():
-            style.theme_use("vista")
-        elif "clam" in style.theme_names():
-            style.theme_use("clam")
-    except Exception:
-        pass
     app = DownloaderApp(root)
     root.mainloop()
 
