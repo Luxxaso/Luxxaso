@@ -21,6 +21,12 @@
     <label for="urls">Link(i) do filmu (jeden na linię, można wkleić kilka)</label>
     <textarea id="urls" rows="4" placeholder="https://www.youtube.com/watch?v=..."></textarea>
 
+    <div class="button-row check-row">
+      <button id="probe_btn" type="button">Sprawdź linki</button>
+    </div>
+
+    <div id="probe_results" class="probe-results" hidden></div>
+
     <div class="row">
       <div class="field">
         <label for="quality">Jakość</label>
@@ -31,6 +37,7 @@
           <option value="480p">480p (mp4)</option>
           <option value="audio">Tylko audio (mp3)</option>
         </select>
+        <span id="quality_hint" class="field-hint"></span>
       </div>
       <div class="field">
         <label for="browser">Ciasteczka z przeglądarki</label>

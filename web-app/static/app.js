@@ -1,4 +1,7 @@
 const urlsEl = document.getElementById("urls");
+const probeBtn = document.getElementById("probe_btn");
+const probeResultsEl = document.getElementById("probe_results");
+const qualityHintEl = document.getElementById("quality_hint");
 const qualityEl = document.getElementById("quality");
 const browserEl = document.getElementById("browser");
 const outputDirEl = document.getElementById("output_dir");
@@ -231,6 +234,135 @@ async function startDownload(urlsOverride) {
     setDownloading(false);
   }
 }
+
+const PRESET_QUALITIES = [
+  { value: "best", label: "Najlepsza jakość (wideo + audio)" },
+  { value: "1080p", label: "1080p (mp4)" },
+  { value: "720p", label: "720p (mp4)" },
+  { value: "480p", label: "480p (mp4)" },
+  { value: "audio", label: "Tylko audio (mp3)" },
+];
+
+function readUrls() {
+  return urlsEl.value.split("\n").map((u) => u.trim()).filter(Boolean);
+}
+
+function formatDuration(sec) {
+  if (!sec && sec !== 0) return "";
+  const s = Math.round(sec);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = s % 60;
+  const mm = h ? String(m).padStart(2, "0") : String(m);
+  return (h ? h + ":" : "") + mm + ":" + String(r).padStart(2, "0");
+}
+
+function setQualityOptions(entries, selected) {
+  const prev = selected || qualityEl.value;
+  qualityEl.innerHTML = "";
+  for (const e of entries) {
+    const opt = document.createElement("option");
+    opt.value = e.value;
+    opt.textContent = e.label;
+    qualityEl.appendChild(opt);
+  }
+  if (entries.some((e) => e.value === prev)) qualityEl.value = prev;
+}
+
+function rebuildQualityFromProbe(results) {
+  const videos = results.filter((r) => !r.error && !r.playlist);
+  if (videos.length === 0) {
+    setQualityOptions(PRESET_QUALITIES);
+    qualityHintEl.textContent = "";
+    return;
+  }
+  // Wspolny maksymalny pulap: najnizsza z maksymalnych rozdzielczosci filmow.
+  const perVideoMax = videos.map((r) => Math.max(0, ...(r.heights || [])));
+  const cap = Math.min(...perVideoMax.filter(Boolean));
+  // Zbior realnie dostepnych wysokosci (do capa), zeby nie oferowac fikcji.
+  const heightSet = new Set();
+  for (const r of videos) for (const h of r.heights || []) if (!cap || h <= cap) heightSet.add(h);
+  const heights = [...heightSet].sort((a, b) => b - a);
+
+  const entries = [{ value: "best", label: "Najlepsza dostępna" + (cap ? ` (${cap}p)` : "") }];
+  for (const h of heights) entries.push({ value: `${h}p`, label: `${h}p (mp4)` });
+  entries.push({ value: "audio", label: "Tylko audio (mp3)" });
+  setQualityOptions(entries);
+
+  qualityHintEl.textContent =
+    videos.length > 1 && new Set(perVideoMax).size > 1
+      ? `Lista ograniczona do wspólnego pułapu ${cap}p`
+      : "Jakości z realnie dostępnych formatów";
+}
+
+function renderProbeResults(results) {
+  probeResultsEl.innerHTML = "";
+  probeResultsEl.hidden = false;
+  for (const r of results) {
+    const card = document.createElement("div");
+    card.className = "probe-card" + (r.error ? " has-error" : "");
+
+    if (r.error) {
+      card.innerHTML = `<div class="probe-meta"><div class="probe-title">Nie udało się sprawdzić</div>` +
+        `<div class="probe-sub"></div></div>`;
+      card.querySelector(".probe-sub").textContent = r.url + " — " + r.error;
+      probeResultsEl.appendChild(card);
+      continue;
+    }
+
+    if (r.playlist) {
+      card.innerHTML = `<div class="probe-meta"><div class="probe-title"></div>` +
+        `<div class="probe-sub">Playlista — ${r.count} filmów</div></div>`;
+      card.querySelector(".probe-title").textContent = r.title;
+      probeResultsEl.appendChild(card);
+      continue;
+    }
+
+    const thumb = r.thumbnail
+      ? `<img class="probe-thumb" alt="" src="${r.thumbnail}">`
+      : `<div class="probe-thumb"></div>`;
+    const maxH = Math.max(0, ...(r.heights || []));
+    const bits = [];
+    if (r.uploader) bits.push(r.uploader);
+    if (r.duration) bits.push(formatDuration(r.duration));
+    bits.push(maxH ? `do ${maxH}p` : "brak wideo");
+    card.innerHTML = thumb +
+      `<div class="probe-meta"><div class="probe-title"></div>` +
+      `<div class="probe-sub"></div></div>`;
+    card.querySelector(".probe-title").textContent = r.title;
+    card.querySelector(".probe-sub").textContent = bits.join(" · ");
+    probeResultsEl.appendChild(card);
+  }
+}
+
+probeBtn.addEventListener("click", async () => {
+  const urls = readUrls();
+  if (urls.length === 0) {
+    alert("Wklej przynajmniej jeden link do filmu.");
+    return;
+  }
+  probeBtn.disabled = true;
+  probeBtn.textContent = "Sprawdzam...";
+  try {
+    const res = await fetch("/api/probe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ urls }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert("Błąd: " + (data.error || "nieznany błąd"));
+      return;
+    }
+    renderProbeResults(data.results || []);
+    rebuildQualityFromProbe(data.results || []);
+  } catch (err) {
+    alert("Nie udało się połączyć z serwerem.");
+  } finally {
+    probeBtn.disabled = false;
+    probeBtn.textContent = "Sprawdź linki";
+  }
+});
 
 downloadBtn.addEventListener("click", () => startDownload());
 retryBtn.addEventListener("click", () => {

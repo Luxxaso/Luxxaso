@@ -9,6 +9,7 @@ konfiguracji PATH).
 
 import json
 import os
+import shutil
 import sys
 import threading
 import tkinter as tk
@@ -24,6 +25,50 @@ try:
     import imageio_ffmpeg
 except ImportError:
     imageio_ffmpeg = None
+
+
+_ffmpeg_cache = {}
+
+
+def resolve_ffmpeg():
+    """Zwraca (location, has_ffprobe).
+
+    location: katalog z ffmpeg+ffprobe (preferowane) albo sciezka do samego
+    ffmpeg. Osadzenie miniaturki w mp4 wymaga ffprobe (lub AtomicParsley).
+    """
+    if _ffmpeg_cache:
+        return _ffmpeg_cache["location"], _ffmpeg_cache["has_ffprobe"]
+
+    try:
+        import static_ffmpeg
+
+        try:
+            static_ffmpeg.add_paths(weak=True)
+        except TypeError:
+            static_ffmpeg.add_paths()
+    except Exception:
+        pass
+
+    ffmpeg = shutil.which("ffmpeg")
+    ffprobe = shutil.which("ffprobe")
+    if ffmpeg and ffprobe:
+        _ffmpeg_cache.update(location=os.path.dirname(ffmpeg), has_ffprobe=True)
+        return _ffmpeg_cache["location"], True
+
+    if imageio_ffmpeg is not None:
+        try:
+            exe = imageio_ffmpeg.get_ffmpeg_exe()
+            _ffmpeg_cache.update(location=exe, has_ffprobe=bool(ffprobe))
+            return exe, bool(ffprobe)
+        except Exception:
+            pass
+
+    if ffmpeg:
+        _ffmpeg_cache.update(location=os.path.dirname(ffmpeg), has_ffprobe=bool(ffprobe))
+        return _ffmpeg_cache["location"], bool(ffprobe)
+
+    _ffmpeg_cache.update(location=None, has_ffprobe=False)
+    return None, False
 
 
 QUALITY_OPTIONS = {
@@ -383,13 +428,19 @@ class DownloaderApp:
         format_selector = QUALITY_OPTIONS[settings["quality"]]
         browser = settings["browser"]
 
+        ffmpeg_location, has_ffprobe = resolve_ffmpeg()
+
         ydl_opts = {
             "outtmpl": os.path.join(settings["output_dir"], "%(title)s.%(ext)s"),
             "progress_hooks": [self._progress_hook],
             "ignoreerrors": True,
+            "socket_timeout": 30,
+            "retries": 10,
+            "fragment_retries": 10,
         }
 
-        if format_selector == "audio":
+        is_audio = format_selector == "audio"
+        if is_audio:
             ydl_opts["format"] = "bestaudio/best"
             ydl_opts["postprocessors"] = [{
                 "key": "FFmpegExtractAudio",
@@ -405,13 +456,19 @@ class DownloaderApp:
             ydl_opts["writesubtitles"] = True
             ydl_opts["writeautomaticsub"] = True
             ydl_opts["subtitleslangs"] = langs
-            if format_selector != "audio":
+            if not is_audio:
                 ydl_opts["embedsubtitles"] = True
 
         if settings["embed_metadata"]:
             ydl_opts.setdefault("postprocessors", [])
-            ydl_opts["writethumbnail"] = True
-            ydl_opts["postprocessors"] += [{"key": "FFmpegMetadata"}, {"key": "EmbedThumbnail"}]
+            ydl_opts["postprocessors"] += [{"key": "FFmpegMetadata"}]
+            if has_ffprobe or is_audio:
+                ydl_opts["writethumbnail"] = True
+                ydl_opts["postprocessors"] += [{"key": "EmbedThumbnail"}]
+            else:
+                self.root.after(0, self._log,
+                                "Uwaga: pomijam osadzanie miniaturki (brak ffprobe). "
+                                "Zainstaluj zaleznosci ponownie (static-ffmpeg).")
 
         if settings["playlist"]:
             ydl_opts["noplaylist"] = False
@@ -420,11 +477,8 @@ class DownloaderApp:
         else:
             ydl_opts["noplaylist"] = True
 
-        if imageio_ffmpeg is not None:
-            try:
-                ydl_opts["ffmpeg_location"] = imageio_ffmpeg.get_ffmpeg_exe()
-            except Exception:
-                pass
+        if ffmpeg_location:
+            ydl_opts["ffmpeg_location"] = ffmpeg_location
 
         if browser and browser != "(brak)":
             ydl_opts["cookiesfrombrowser"] = (browser,)

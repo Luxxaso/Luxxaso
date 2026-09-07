@@ -6,8 +6,10 @@ Uruchamia mały serwer Flask na 127.0.0.1, wystawia stronę index.html
 pobierania filmów. Przy starcie automatycznie otwiera przeglądarkę.
 """
 
+import glob
 import json
 import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -27,6 +29,54 @@ try:
 except ImportError:
     imageio_ffmpeg = None
 
+
+_ffmpeg_cache = {}
+
+
+def resolve_ffmpeg():
+    """Zwraca (location, has_ffprobe).
+
+    location: katalog z ffmpeg+ffprobe (preferowane) albo sciezka do samego
+    ffmpeg (fallback z imageio-ffmpeg, bez ffprobe). yt-dlp potrzebuje ffprobe
+    (lub AtomicParsley), zeby osadzic miniaturke w pliku mp4/m4a.
+    """
+    if _ffmpeg_cache:
+        return _ffmpeg_cache["location"], _ffmpeg_cache["has_ffprobe"]
+
+    # 1. static-ffmpeg dostarcza ZAROWNO ffmpeg jak i ffprobe (pobiera przy
+    #    pierwszym uzyciu i dopisuje do PATH).
+    try:
+        import static_ffmpeg
+
+        try:
+            static_ffmpeg.add_paths(weak=True)
+        except TypeError:
+            static_ffmpeg.add_paths()
+    except Exception:
+        pass
+
+    ffmpeg = shutil.which("ffmpeg")
+    ffprobe = shutil.which("ffprobe")
+    if ffmpeg and ffprobe:
+        _ffmpeg_cache.update(location=os.path.dirname(ffmpeg), has_ffprobe=True)
+        return _ffmpeg_cache["location"], True
+
+    # 2. imageio-ffmpeg: tylko ffmpeg, brak ffprobe.
+    if imageio_ffmpeg is not None:
+        try:
+            exe = imageio_ffmpeg.get_ffmpeg_exe()
+            _ffmpeg_cache.update(location=exe, has_ffprobe=bool(ffprobe))
+            return exe, bool(ffprobe)
+        except Exception:
+            pass
+
+    if ffmpeg:
+        _ffmpeg_cache.update(location=os.path.dirname(ffmpeg), has_ffprobe=bool(ffprobe))
+        return _ffmpeg_cache["location"], bool(ffprobe)
+
+    _ffmpeg_cache.update(location=None, has_ffprobe=False)
+    return None, False
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 DEFAULT_OUTPUT_DIR = os.path.join(os.path.expanduser("~"), "Downloads", "Pobrane_filmy")
@@ -39,6 +89,21 @@ QUALITY_FORMATS = {
     "480p": "bv*[height<=480]+ba/b",
     "audio": "audio",
 }
+
+
+def quality_to_format(quality):
+    """Zamienia wartosc z listy jakosci na selektor formatu yt-dlp.
+
+    Obsluguje predefiniowane klucze oraz dowolne '<liczba>p' (np. '1440p'),
+    ktore moga przyjsc z dynamicznej listy po sprawdzeniu linku.
+    """
+    quality = (quality or "best").strip().lower()
+    if quality in QUALITY_FORMATS:
+        return QUALITY_FORMATS[quality]
+    if quality.endswith("p") and quality[:-1].isdigit():
+        return f"bv*[height<={quality[:-1]}]+ba/b"
+    return QUALITY_FORMATS["best"]
+
 
 DEFAULT_CONFIG = {
     "quality": "best",
@@ -115,17 +180,50 @@ def _set_item_status(job_id, index, status_text):
             job["items"][index]["status"] = status_text
 
 
+_MEDIA_EXTS = (".mp4", ".mkv", ".webm", ".mp3", ".m4a", ".opus", ".flac", ".mov")
+_THUMB_EXTS = (".webp", ".png", ".jpg", ".jpeg")
+
+
+def _cleanup_stray_files(output_dir):
+    """Sprzata pliki tymczasowe i osierocone miniaturki po pobraniu."""
+    try:
+        for path in glob.glob(os.path.join(glob.escape(output_dir), "*")):
+            lower = path.lower()
+            if lower.endswith((".part", ".ytdl", ".temp")) or ".part-" in lower:
+                _safe_remove(path)
+                continue
+            stem, ext = os.path.splitext(path)
+            if ext.lower() in _THUMB_EXTS and any(
+                os.path.exists(stem + media) for media in _MEDIA_EXTS
+            ):
+                _safe_remove(path)
+    except Exception:
+        pass
+
+
+def _safe_remove(path):
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
 def _run_download(job_id, urls, settings):
-    format_selector = QUALITY_FORMATS.get(settings.get("quality", "best"), QUALITY_FORMATS["best"])
+    format_selector = quality_to_format(settings.get("quality", "best"))
     output_dir = settings["output_dir"]
+    ffmpeg_location, has_ffprobe = resolve_ffmpeg()
 
     ydl_opts = {
         "outtmpl": os.path.join(output_dir, "%(title)s.%(ext)s"),
         "ignoreerrors": True,
         "progress_hooks": [lambda d: _progress_hook(job_id, d)],
+        "socket_timeout": 30,
+        "retries": 10,
+        "fragment_retries": 10,
     }
 
-    if format_selector == "audio":
+    is_audio = format_selector == "audio"
+    if is_audio:
         ydl_opts["format"] = "bestaudio/best"
         ydl_opts["postprocessors"] = [{
             "key": "FFmpegExtractAudio",
@@ -141,13 +239,24 @@ def _run_download(job_id, urls, settings):
         ydl_opts["writesubtitles"] = True
         ydl_opts["writeautomaticsub"] = True
         ydl_opts["subtitleslangs"] = langs
-        if format_selector != "audio":
+        if not is_audio:
             ydl_opts["embedsubtitles"] = True
 
     if settings.get("embed_metadata"):
         ydl_opts.setdefault("postprocessors", [])
-        ydl_opts["writethumbnail"] = True
-        ydl_opts["postprocessors"] += [{"key": "FFmpegMetadata"}, {"key": "EmbedThumbnail"}]
+        ydl_opts["postprocessors"] += [{"key": "FFmpegMetadata"}]
+        # Osadzenie miniaturki w mp4/m4a wymaga ffprobe (albo AtomicParsley).
+        # Dla mp3 wystarcza mutagen. Bez tego yt-dlp konczy z bledem i
+        # zostawia obok pliku smieciowe .webp/.png, wiec pomijamy krok.
+        if has_ffprobe or is_audio:
+            ydl_opts["writethumbnail"] = True
+            ydl_opts["postprocessors"] += [{"key": "EmbedThumbnail"}]
+        else:
+            _job_log(
+                job_id,
+                "Uwaga: pomijam osadzanie miniaturki (brak ffprobe). "
+                "Zainstaluj zaleznosci ponownie (static-ffmpeg) albo AtomicParsley.",
+            )
 
     if settings.get("playlist"):
         ydl_opts["noplaylist"] = False
@@ -156,11 +265,8 @@ def _run_download(job_id, urls, settings):
     else:
         ydl_opts["noplaylist"] = True
 
-    if imageio_ffmpeg is not None:
-        try:
-            ydl_opts["ffmpeg_location"] = imageio_ffmpeg.get_ffmpeg_exe()
-        except Exception:
-            pass
+    if ffmpeg_location:
+        ydl_opts["ffmpeg_location"] = ffmpeg_location
 
     browser = settings.get("browser")
     if browser and browser != "none":
@@ -183,6 +289,8 @@ def _run_download(job_id, urls, settings):
     except Exception as exc:
         had_error = True
         _job_log(job_id, f"Nieoczekiwany błąd: {exc}")
+
+    _cleanup_stray_files(output_dir)
 
     with jobs_lock:
         job = jobs.get(job_id)
@@ -231,6 +339,69 @@ def pick_folder_route():
     if path:
         return jsonify({"path": path})
     return jsonify({"path": "", "error": "Nie wybrano folderu albo okno dialogowe jest niedostępne na tym systemie."})
+
+
+def _probe_url(url):
+    ffmpeg_location, _ = resolve_ffmpeg()
+    opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "skip_download": True,
+        "noplaylist": True,
+        "socket_timeout": 20,
+    }
+    if ffmpeg_location:
+        opts["ffmpeg_location"] = ffmpeg_location
+
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(url, download=False)
+
+    if info.get("_type") == "playlist":
+        entries = [e for e in (info.get("entries") or []) if e]
+        return {
+            "url": url,
+            "playlist": True,
+            "title": info.get("title") or "Playlista",
+            "count": len(entries),
+            "heights": [],
+        }
+
+    heights = sorted(
+        {f["height"] for f in info.get("formats", []) if f.get("height")},
+        reverse=True,
+    )
+    has_audio = any(
+        f.get("acodec") and f.get("acodec") != "none" for f in info.get("formats", [])
+    )
+    return {
+        "url": url,
+        "playlist": False,
+        "title": info.get("title") or url,
+        "uploader": info.get("uploader") or info.get("channel") or "",
+        "duration": info.get("duration"),
+        "thumbnail": info.get("thumbnail"),
+        "heights": heights,
+        "has_audio": has_audio,
+    }
+
+
+@app.route("/api/probe", methods=["POST"])
+def probe():
+    if yt_dlp is None:
+        return jsonify({"error": "Biblioteka yt-dlp nie jest zainstalowana."}), 500
+
+    data = request.get_json(force=True) or {}
+    urls = [u.strip() for u in data.get("urls", []) if u.strip()]
+    if not urls:
+        return jsonify({"error": "Podaj przynajmniej jeden link."}), 400
+
+    results = []
+    for url in urls:
+        try:
+            results.append(_probe_url(url))
+        except Exception as exc:
+            results.append({"url": url, "error": str(exc)})
+    return jsonify({"results": results})
 
 
 @app.route("/api/download", methods=["POST"])
@@ -296,6 +467,16 @@ def main():
     if yt_dlp is None:
         print("UWAGA: biblioteka yt-dlp nie jest zainstalowana. "
               "Uruchom run_web_windows.bat / run_web_mac_linux.sh albo: pip install -r requirements.txt")
+
+    print("Sprawdzam ffmpeg/ffprobe (przy pierwszym uruchomieniu moze chwile pobierac)...")
+    location, has_ffprobe = resolve_ffmpeg()
+    if location and has_ffprobe:
+        print(f"OK: ffmpeg + ffprobe gotowe ({location}).")
+    elif location:
+        print("UWAGA: znaleziono ffmpeg, ale brak ffprobe - miniaturki nie beda "
+              "osadzane w mp4. Zainstaluj zaleznosci ponownie (static-ffmpeg).")
+    else:
+        print("UWAGA: brak ffmpeg - laczenie audio+wideo moze nie dzialac.")
 
     host = "127.0.0.1"
     port = 5000

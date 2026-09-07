@@ -1,2 +1,4 @@
 yt-dlp>=2024.1.0
 imageio-ffmpeg>=0.4.9
+static-ffmpeg>=2.5
+mutagen>=1.47.0

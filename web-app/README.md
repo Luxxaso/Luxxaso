@@ -30,7 +30,10 @@ Ty widzisz tylko stronę HTML w przeglądarce.
 ## Jak używać strony
 
 1. Wklej link (lub kilka, po jednym w linii).
-2. Wybierz jakość i (opcjonalnie) przeglądarkę z ciasteczkami dla filmów
+2. (Opcjonalnie) kliknij **„Sprawdź linki”** — strona pobierze tytuł, czas
+   trwania i miniaturkę, a lista „Jakość” pokaże tylko rozdzielczości, które
+   dany film faktycznie oferuje (przy kilku filmach: wspólny pułap).
+3. Wybierz jakość i (opcjonalnie) przeglądarkę z ciasteczkami dla filmów
    prywatnych/niepublicznych.
 3. Kliknij **„Wybierz...”** przy folderze zapisu, żeby otworzyć prawdziwe
    okno wyboru folderu systemu (zamiast wpisywać ścieżkę ręcznie).
@@ -52,6 +55,13 @@ Ty widzisz tylko stronę HTML w przeglądarce.
   serwera.
 - Skrypt startowy przy każdym uruchomieniu **aktualizuje yt-dlp** do
   najnowszej wersji.
+- **ffmpeg + ffprobe** są pobierane automatycznie (pakiet `static-ffmpeg`)
+  przy pierwszym uruchomieniu — potrzebne do łączenia audio/wideo i
+  osadzania miniaturki w pliku mp4.
+- YouTube od niedawna wymaga środowiska JavaScript (np. **Deno**) do pełnej
+  listy formatów. Bez niego pobieranie nadal działa, ale część rozdzielczości
+  może być niedostępna (w logu pojawia się ostrzeżenie „No supported
+  JavaScript runtime”). Wystarczy zainstalować Deno i dodać go do PATH.
 
 ## Zatrzymanie
 
